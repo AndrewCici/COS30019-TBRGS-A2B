@@ -1,0 +1,17 @@
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Virtual Environment 
+venv/
+env/
+.env
+
+# MacOS & IDE rác
+.DS_Store
+.vscode/
+
+# data/Scats Data October 2006.xls
+# data/scats_clean.csv
