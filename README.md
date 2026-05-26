@@ -46,7 +46,7 @@ All models are trained on 15-minute interval SCATS traffic volume data
 ```
 Workspace/
 ├── data/
-│   └── scats_sample.csv        # SCATS traffic volume data (96 intervals/day)
+│   └── scats_clean.csv        # SCATS traffic volume data (96 intervals/day)
 ├── models/                     # Saved model weights (created by train.py)
 │   ├── lstm_best.pth
 │   ├── gru_best.pth
@@ -130,7 +130,7 @@ python train.py
 
 This will:
 
-1. Load and preprocess `data/scats_sample.csv` using `TrafficDataProcessor`
+1. Load and preprocess `data/scats_clean.csv` using `TrafficDataProcessor`
 2. Train all three models (LSTM, GRU, Transformer) for up to 50 epochs each
    with early stopping (patience = 10)
 3. Save the best weights to `models/lstm_best.pth`, `models/gru_best.pth`,
@@ -239,7 +239,7 @@ The 0.5-minute constant accounts for intersection delay at each SCATS node.
 
 ## Notes
 
-- The current dataset (`scats_sample.csv`) contains one SCATS site (ID 970).
+- The current dataset (`scats_clean.csv`) contains one SCATS site (ID 970).
   The GUI uses a **10-node mock Melbourne network** for demonstration;
   replace `MOCK_SCATS` in `main_gui.py` with real multi-site SCATS data for
   production use.

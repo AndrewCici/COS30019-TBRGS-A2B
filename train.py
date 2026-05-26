@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 # Resolve paths relative to this script regardless of cwd
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH  = os.path.join(SCRIPT_DIR, "data", "scats_sample.csv")
+DATA_PATH  = os.path.join(SCRIPT_DIR, "data", "scats_clean.csv")
 MODELS_DIR = os.path.join(SCRIPT_DIR, "models")
 PLOTS_DIR  = os.path.join(SCRIPT_DIR, "plots")
 os.makedirs(MODELS_DIR, exist_ok=True)

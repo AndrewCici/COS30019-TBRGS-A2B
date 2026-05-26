@@ -30,7 +30,7 @@ from models import TrafficLSTM, TrafficGRU, TrafficTransformer
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-DATA_PATH  = os.path.join(SCRIPT_DIR, "data", "scats_sample.csv")
+DATA_PATH  = os.path.join(SCRIPT_DIR, "data", "scats_clean.csv")
 MODELS_DIR = os.path.join(SCRIPT_DIR, "models")
 
 # ---------------------------------------------------------------------------

@@ -1,17 +1,51 @@
-# Python Cache
+# ==========================================
+# Python Cache & Testing
+# ==========================================
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
 
-# Virtual Environment 
+# ==========================================
+# Virtual Environments & Env files
+# ==========================================
 venv/
 env/
+.venv/
 .env
 
-# MacOS & IDE rác
+# ==========================================
+# OS & IDE specifics
+# ==========================================
 .DS_Store
 .vscode/
+.claude/
 
-# data/Scats Data October 2006.xls
-# data/scats_clean.csv
+# ==========================================
+# TBRGS Project Generated Files
+# ==========================================
+# Ignore trained model weights
+models/
+
+
+
+# Ignore generated folium map
+map.html
+
+# ==========================================
+# Data Directory
+# ==========================================
+# Ignore everything inside data folder...
+data/*
+# ...except these files:
+!data/scats_clean.csv
+!data/.gitkeep
+
+# ==========================================
+# Docs Directory
+# ==========================================
+# Ignore everything inside docs folder...
+docs/*
+# ...except these files:
+!docs/.gitkeep

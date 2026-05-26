@@ -196,7 +196,7 @@ class TrafficDataProcessor:
 if __name__ == "__main__":
     import os
 
-    DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "scats_sample.csv")
+    DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "scats_clean.csv")
 
     processor = TrafficDataProcessor(
         filepath=DATA_PATH,

@@ -34,7 +34,7 @@ from PyQt5.QtGui import QFont, QIcon
 
 import folium
 
-from routing import TrafficGraph, calculate_travel_time, yen_k_shortest_paths
+from routing import TrafficGraph, calculate_travel_time, yen_k_shortest_paths, build_graph_from_scats, DATA_PATH, predict_flows
 
 
 # ===========================================================================
@@ -42,18 +42,7 @@ from routing import TrafficGraph, calculate_travel_time, yen_k_shortest_paths
 # Stonnington area).  In production this is replaced by the full CSV.
 # Format: scats_id -> (latitude, longitude, street_label)
 # ===========================================================================
-MOCK_SCATS: dict = {
-    970:  (-37.86703, 145.09159, "WARRIGAL_RD / HIGH_STREET_RD"),
-    2000: (-37.85200, 145.03800, "GLENFERRIE_RD / BURWOOD_RD"),
-    2200: (-37.84000, 145.05900, "BURKE_RD / BARKERS_RD"),
-    3000: (-37.86000, 145.05900, "BURKE_RD / MALVERN_RD"),
-    3100: (-37.87300, 145.04300, "DANDENONG_RD / BURKE_RD"),
-    4000: (-37.86200, 145.07800, "TOORONGA_RD / MALVERN_RD"),
-    4500: (-37.85600, 145.06900, "WARRIGAL_RD / MALVERN_RD"),
-    5000: (-37.87500, 145.06800, "WARRIGAL_RD / DANDENONG_RD"),
-    5500: (-37.84500, 145.07800, "WARRIGAL_RD / BARKERS_RD"),
-    6000: (-37.83500, 145.09100, "WARRIGAL_RD / RIVERSDALE_RD"),
-}
+
 
 ROUTE_COLORS = ["red", "blue", "green", "purple", "orange"]
 ROUTE_COLOR_HEX = {
@@ -73,50 +62,16 @@ MAP_OUTPUT = os.path.join(SCRIPT_DIR, "map.html")
 # Graph helpers
 # ===========================================================================
 
-def _haversine_local(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in km."""
-    R  = 6371.0
-    p1 = math.radians(lat1);  p2 = math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    a  = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return R * 2.0 * math.asin(math.sqrt(max(a, 0.0)))
 
-
-def build_mock_graph(mock_flow: float = 300.0) -> tuple:
-    """
-    Build a TrafficGraph from MOCK_SCATS, connecting each site to its
-    nearest MAX_NEIGHBOURS neighbours within CONNECTION_RADIUS_KM.
-
-    Returns
-    -------
-    (graph: TrafficGraph, flow_map: dict[int, float])
-    """
-    graph = TrafficGraph()
-    for nid, (lat, lon, _) in MOCK_SCATS.items():
-        graph.add_node(nid, lat, lon)
-
-    added: set = set()
-    for a, (lat1, lon1, _) in MOCK_SCATS.items():
-        dists = []
-        for b, (lat2, lon2, _) in MOCK_SCATS.items():
-            if a == b:
-                continue
-            d = _haversine_local(lat1, lon1, lat2, lon2)
-            if d <= CONNECTION_RADIUS_KM:
-                dists.append((d, b))
-        dists.sort()
-        for d, b in dists[:MAX_NEIGHBOURS]:
-            if (a, b) not in added:
-                graph.add_edge(a, b, d)
-                added.add((a, b))
-            if (b, a) not in added:
-                graph.add_edge(b, a, d)
-                added.add((b, a))
-
-    flow_map = {nid: mock_flow for nid in MOCK_SCATS}
-    return graph, flow_map
-
+try:
+    _real_graph = build_graph_from_scats(DATA_PATH)
+    REAL_SCATS = {
+        nid: (lat, lon, f"Intersection {nid}") 
+        for nid, (lat, lon) in _real_graph.nodes.items()
+    }
+except Exception as e:
+    print(f"Warning: Could not load real data: {e}")
+    REAL_SCATS = {}
 
 # ===========================================================================
 # Background worker thread
@@ -137,15 +92,9 @@ class RoutingWorker(QThread):
 
     def run(self) -> None:
         try:
-            graph, flow_map = build_mock_graph()
-
-            # Optionally upgrade flow_map with real ML predictions
-            try:
-                from routing import predict_flows
-                real = predict_flows(self.model_name)
-                flow_map.update(real)
-            except Exception:
-                pass   # trained weights not available yet — use mock flows
+            
+            graph = build_graph_from_scats(DATA_PATH)
+            flow_map = predict_flows(self.model_name)
 
             if self.origin not in graph.nodes:
                 avail = sorted(graph.nodes.keys())
@@ -197,8 +146,8 @@ def generate_map(routes: list, origin: int, destination: int) -> str:
     - Map is saved to MAP_OUTPUT and its absolute path is returned.
     """
     involved = {n for path, _ in routes for n in path}
-    lats = [MOCK_SCATS[n][0] for n in involved if n in MOCK_SCATS]
-    lons = [MOCK_SCATS[n][1] for n in involved if n in MOCK_SCATS]
+    lats = [REAL_SCATS[n][0] for n in involved if n in REAL_SCATS]
+    lons = [REAL_SCATS[n][1] for n in involved if n in REAL_SCATS]
     center = (
         sum(lats) / len(lats) if lats else -37.858,
         sum(lons) / len(lons) if lons else 145.070,
@@ -214,8 +163,8 @@ def generate_map(routes: list, origin: int, destination: int) -> str:
     for rank, (path, tt) in enumerate(routes):
         color  = ROUTE_COLORS[rank % len(ROUTE_COLORS)]
         coords = [
-            (MOCK_SCATS[n][0], MOCK_SCATS[n][1])
-            for n in path if n in MOCK_SCATS
+            (REAL_SCATS[n][0], REAL_SCATS[n][1])
+            for n in path if n in REAL_SCATS
         ]
         if len(coords) < 2:
             continue
@@ -254,7 +203,7 @@ def generate_map(routes: list, origin: int, destination: int) -> str:
             ).add_to(fmap)
 
     # ---- SCATS site markers ----------------------------------------------
-    for nid, (lat, lon, label) in MOCK_SCATS.items():
+    for nid, (lat, lon, label) in REAL_SCATS.items():
         if nid == origin:
             icon = folium.Icon(color="green", icon="play", prefix="fa")
         elif nid == destination:
@@ -371,7 +320,7 @@ class TBRGSWindow(QMainWindow):
         iv = QVBoxLayout(inner)
         iv.setContentsMargins(0, 0, 0, 0)
         iv.setSpacing(2)
-        for nid, (lat, lon, lbl) in MOCK_SCATS.items():
+        for nid, (lat, lon, lbl) in REAL_SCATS.items():
             row = QLabel(
                 f"<b style='color:#3498db'>{nid}</b>"
                 f"<span style='color:#95a5a6'> — {lbl}</span>"
@@ -487,7 +436,7 @@ class TBRGSWindow(QMainWindow):
             zoom_start=14,
             tiles="OpenStreetMap",
         )
-        for nid, (lat, lon, lbl) in MOCK_SCATS.items():
+        for nid, (lat, lon, lbl) in REAL_SCATS.items():
             folium.Marker(
                 location=[lat, lon],
                 popup=folium.Popup(
@@ -529,7 +478,7 @@ class TBRGSWindow(QMainWindow):
             QMessageBox.warning(
                 self, "Invalid Input",
                 "Origin and Destination must be integer SCATS numbers.\n"
-                f"Available: {sorted(MOCK_SCATS.keys())}"
+                f"Available: {sorted(REAL_SCATS.keys())}"
             )
             return
 
@@ -562,8 +511,8 @@ class TBRGSWindow(QMainWindow):
         dest   = int(self.dest_input.text().strip())
         model  = self.model_combo.currentText()
 
-        origin_lbl = MOCK_SCATS.get(origin, ("", "", str(origin)))[2]
-        dest_lbl   = MOCK_SCATS.get(dest,   ("", "", str(dest)))[2]
+        origin_lbl = REAL_SCATS.get(origin, ("", "", str(origin)))[2]
+        dest_lbl   = REAL_SCATS.get(dest,   ("", "", str(dest)))[2]
 
         # ---- Text results ------------------------------------------------
         COLOR_DOTS = {
